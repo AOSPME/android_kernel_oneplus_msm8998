@@ -79,15 +79,16 @@ struct loop_info64 {
  * IOCTL commands --- we will commandeer 0x4C ('L')
  */
 
-#define LOOP_SET_FD		0x4C00
-#define LOOP_CLR_FD		0x4C01
+#define LOOP_SET_FD			0x4C00
+#define LOOP_CLR_FD			0x4C01
 #define LOOP_SET_STATUS		0x4C02
 #define LOOP_GET_STATUS		0x4C03
-#define LOOP_SET_STATUS64	0x4C04
+#define LOOP_SET_STATUS64		0x4C04
 #define LOOP_GET_STATUS64	0x4C05
 #define LOOP_CHANGE_FD		0x4C06
-#define LOOP_SET_CAPACITY	0x4C07
+#define LOOP_SET_CAPACITY		0x4C07
 #define LOOP_SET_DIRECT_IO	0x4C08
+#define LOOP_SET_BLOCK_SIZE	0x4C09
 
 /* /dev/loop-control interface */
 #define LOOP_CTL_ADD		0x4C80

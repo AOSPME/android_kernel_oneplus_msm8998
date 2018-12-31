@@ -708,10 +708,13 @@ int seccomp_phase2(u32 phase1_result)
 	/* Allow the BPF to provide the event message */
 	ptrace_event(PTRACE_EVENT_SECCOMP, data);
 	/*
-	 * The delivery of a fatal signal during event
-	 * notification may silently skip tracer notification.
-	 * Terminating the task now avoids executing a system
-	 * call that may not be intended.
+	 * notification may silently skip tracer notification,
+	 * which could leave us with a potentially unmodified
+	 * syscall that the tracer would have liked to have
+	 * changed. Since the process is about to die, we just
+	 * force the syscall to be skipped and let the signal
+	 * kill the process and correctly handle any tracer exit
+	 * notifications.
 	 */
 	if (fatal_signal_pending(current))
 		do_exit(SIGSYS);

@@ -1058,6 +1058,7 @@ static int loop_clr_fd(struct loop_device *lo)
 	memset(lo->lo_encrypt_key, 0, LO_KEY_SIZE);
 	memset(lo->lo_crypt_name, 0, LO_NAME_SIZE);
 	memset(lo->lo_file_name, 0, LO_NAME_SIZE);
+	blk_queue_logical_block_size(lo->lo_queue, 512);
 	if (bdev) {
 		bdput(bdev);
 		invalidate_bdev(bdev);
@@ -1339,6 +1340,25 @@ static int loop_set_dio(struct loop_device *lo, unsigned long arg)
 	return error;
 }
 
+	
+static int loop_set_block_size(struct loop_device *lo, unsigned long arg)
+{
+	if (lo->lo_state != Lo_bound)
+		return -ENXIO;
+	
+	if (arg < 512 || arg > PAGE_SIZE || !is_power_of_2(arg))
+		return -EINVAL;
+	
+	blk_mq_freeze_queue(lo->lo_queue);
+	
+	blk_queue_logical_block_size(lo->lo_queue, arg);
+	loop_update_dio(lo);
+	
+	blk_mq_unfreeze_queue(lo->lo_queue);
+	
+	return 0;
+}
+
 static int lo_ioctl(struct block_device *bdev, fmode_t mode,
 	unsigned int cmd, unsigned long arg)
 {
@@ -1386,6 +1406,11 @@ static int lo_ioctl(struct block_device *bdev, fmode_t mode,
 		err = -EPERM;
 		if ((mode & FMODE_WRITE) || capable(CAP_SYS_ADMIN))
 			err = loop_set_dio(lo, arg);
+		break;
+	case LOOP_SET_BLOCK_SIZE:
+		err = -EPERM;
+		if ((mode & FMODE_WRITE) || capable(CAP_SYS_ADMIN))
+			err = loop_set_block_size(lo, arg);
 		break;
 	default:
 		err = lo->ioctl ? lo->ioctl(lo, cmd, arg) : -EINVAL;
@@ -1541,6 +1566,7 @@ static int lo_compat_ioctl(struct block_device *bdev, fmode_t mode,
 		arg = (unsigned long) compat_ptr(arg);
 	case LOOP_SET_FD:
 	case LOOP_CHANGE_FD:
+	case LOOP_SET_BLOCK_SIZE:
 		err = lo_ioctl(bdev, mode, cmd, arg);
 		break;
 	default:
@@ -1772,7 +1798,8 @@ static int loop_add(struct loop_device **l, int i)
 		goto out_cleanup_tags;
 	}
 	lo->lo_queue->queuedata = lo;
-
+	
+	blk_queue_max_hw_sectors(lo->lo_queue, BLK_DEF_MAX_SECTORS);
 	/*
 	 * It doesn't make sense to enable merge because the I/O
 	 * submitted to backing file is handled page by page.

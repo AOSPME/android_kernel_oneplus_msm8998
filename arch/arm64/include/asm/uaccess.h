@@ -307,8 +307,8 @@ do {									\
 ({									\
 	__typeof__(*(ptr)) __user *__p = (ptr);				\
 	might_fault();							\
-	__get_user((x), __p) :					\
-		__p = uaccess_mask_ptr(__p), __get_user((x), __p) :	\
+	access_ok(VERIFY_READ, __p, sizeof(*__p)) ?			\
+		__get_user((x), __p) :					\
 		((x) = 0, -EFAULT);					\
 })
 

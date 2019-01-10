@@ -48,7 +48,6 @@
 #include <linux/workqueue.h>
 #include <linux/export.h>
 #include <linux/hashtable.h>
-#include <linux/nospec.h>
 
 #include "timekeeping.h"
 
@@ -583,21 +582,13 @@ static void release_posix_timer(struct k_itimer *tmr, int it_id_set)
 
 static struct k_clock *clockid_to_kclock(const clockid_t id)
 {
-	struct k_clock *kc;
-	clockid_t idx = id;
-	
-	if (id < 0) {
+	if (id < 0)
 		return (id & CLOCKFD_MASK) == CLOCKFD ?
 			&clock_posix_dynamic : &clock_posix_cpu;
-	}
-	
-	if (id >= ARRAY_SIZE(posix_clocks))
-		return NULL;
 
-	kc = &posix_clocks[array_index_nospec(idx, ARRAY_SIZE(posix_clocks))];
-	if (!kc->clock_getres)
+	if (id >= MAX_CLOCKS || !posix_clocks[id].clock_getres)
 		return NULL;
-	return kc;
+	return &posix_clocks[id];
 }
 
 static int common_timer_create(struct k_itimer *new_timer)
